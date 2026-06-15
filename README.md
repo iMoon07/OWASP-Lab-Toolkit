@@ -79,7 +79,7 @@
 
 ## 🎯 The Hacking Like A Pro in Dojo — 9 Vulnerable Apps
 
-> Accessed via custom local domains for a realistic feel. Requires mapping the domains to your attacker's `/etc/hosts` file.
+> Accessed via custom local domains for a realistic feel. Requires mapping the domains to your attacker's local hosts file (`/etc/hosts` for Linux/Mac, or `C:\Windows\System32\drivers\etc\hosts` for Windows).
 
 | Application | Engine | Local Domain | 
 |-------------|--------|--------------|
