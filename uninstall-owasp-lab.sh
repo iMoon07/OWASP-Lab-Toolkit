@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==============================================================================
-# OWASP LAB TOOLKIT - NUCLEAR UNINSTALLER
+# OWASP LAB TOOLKIT v1.1 - NUCLEAR UNINSTALLER
 # Developed by iMoon (linkedin.com/in/imoon07) · infosec-world.id · Inspired by Taro Lay (linkedin.com/in/tarolay)
 # ==============================================================================
 
@@ -46,9 +46,10 @@ _tp "${WHT}Data to be wiped / Data yang akan dihancurkan:${RST}"
 _tp "${WHT}- MariaDB Databases & Users${RST}"
 _tp "${WHT}- Apache, Nginx, PHP (All Versions & Binaries)${RST}"
 _tp "${WHT}- Java (Temurin/OpenJDK), NodeJS & NPM${RST}"
-_tp "${WHT}- Apache Tomcat & All Vulnerable Web Apps (bWAPP, WebGoat, dll)${RST}"
+_tp "${WHT}- Apache Tomcat & All Vulnerable Web Apps${RST}"
 _tp "${WHT}- Config Files (/etc/owasp-lab, /etc/nginx, /etc/php, /etc/mysql)${RST}"
-_tp "${WHT}- SystemD Services, Firewall Rules (UFW/IPTables NAT)${RST}"
+_tp "${WHT}- CLI Tools Backend (/usr/local/bin/owasp-lab)${RST}"
+_tp "${WHT}- SystemD Services, Sudoers, Firewall Rules (UFW/IPTables NAT)${RST}"
 _tp "${WHT}- Swapfile & Custom /etc/hosts records${RST}"
 _tp ""
 
@@ -120,14 +121,17 @@ _purge_manifest() {
     # Completely destroy OWASP Lab configs
     rm -rf /etc/owasp-lab
     
-    # 3. Hardcoded directories wipe
+    # 3. Custom directories wipe
     local DIRS_TO_PURGE=(
-        "/etc/apache2" "/etc/nginx" "/etc/php" "/etc/mysql" 
-        "/var/www/html" "/var/www/hack" "/usr/local/share/src-analysis" "/opt/tomcat"
-        "/opt/java" "/opt/nodejs" "/usr/local/mysql" "/usr/local/mariadb" 
-        "/usr/local/apache2" "/usr/local/nginx"
+        "/var/www/hack" "/usr/local/share/src-analysis" "/opt/tomcat"
+        "/opt/java" "/opt/nodejs" "/opt/webgoat" "/opt/juiceshop"
+        "/usr/local/mysql" "/usr/local/mariadb" 
+        "/usr/local/apache2" "/usr/local/nginx" "/usr/local/bin/owasp-lab"
     )
     for d in "${DIRS_TO_PURGE[@]}"; do rm -rf "$d" 2>/dev/null || true; done
+    
+    # Remove our generated index file without deleting other files in web root
+    rm -f /var/www/html/index.html 2>/dev/null || true
     
     # 4. Hardcoded files wipe
     local FILES_TO_PURGE=(
@@ -140,6 +144,7 @@ _purge_manifest() {
         "/etc/apt/sources.list.d/mariadb.list"
         "/etc/apt/sources.list.d/adoptium.list"
         "/etc/owasp-lab-manifest.txt"
+        "/etc/sudoers.d/owasp-web"
     )
     for f in "${FILES_TO_PURGE[@]}"; do rm -f "$f" 2>/dev/null || true; done
     

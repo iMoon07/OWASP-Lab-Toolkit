@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# OWASP LAB TOOLKIT - INSTALLER
+# OWASP LAB TOOLKIT v1.1 - INSTALLER
 # Developed by iMoon (linkedin.com/in/imoon07) · infosec-world.id · Inspired by Taro Lay (linkedin.com/in/tarolay)
 # ==============================================================================
 
@@ -21,12 +21,12 @@ fi
 
 # ==========================================
 # [ UI / FRONTEND ]
-# Tampilan Layar Utama / Terminal Display
+# Main Terminal Display
 # ==========================================
 # Clear screen and show banner
 clear
 echo -e "${REDBG}${YLW}                                                                        ${RST}"
-echo -e "${REDBG}${YLW}                      OWASP LAB TOOLKIT INSTALLER                       ${RST}"
+echo -e "${REDBG}${YLW}                    OWASP LAB TOOLKIT v1.1 INSTALLER                    ${RST}"
 echo -e "${REDBG}${YLW}                                                                        ${RST}"
 _print_ascii_art
 
@@ -87,7 +87,7 @@ LOG_FILE="${SCRIPT_DIR}/owasp-lab.log"
 
 # ==========================================
 # [ BACKEND EXECUTION ]
-# Eksekusi Utama / Main Core Process
+# Main Core Process Execution
 # ==========================================
 
 # ------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ _install_engines() {
     
     local ENGINES_LIST=(
         "apache2" "nginx" "mariadb-server" 
-        "php8.3" "php8.3-mysql" "php8.3-curl" "php8.3-mbstring" "php8.3-xml" "php8.3-gd" "php8.3-zip"
+        "php8.3" "php8.3-mysql" "php8.3-sqlite3" "php8.3-curl" "php8.3-mbstring" "php8.3-xml" "php8.3-gd" "php8.3-zip"
         "nodejs" "temurin-21-jdk"
     )
     apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" "${ENGINES_LIST[@]}"
@@ -240,24 +240,39 @@ _clone_apps() {
     cd "$HACK_DIR"
     
     for app in "${APPS_LIST[@]}"; do
-        local url="${APP_URL[$app]}" 
-        local clone_dir="${APP_DIR[$app]}"
+        local src="${APP_URL[$app]}" 
+        local dir="${APP_DIR[$app]}"
+        local engine="${APP_ENGINE[$app]}"
         
-        if [[ "$url" == *.git ]]; then
-            if [ ! -d "$clone_dir" ]; then
-                git clone "$url" "$clone_dir"
+        if [ "$engine" == "apache" ]; then
+            if [ ! -d "$dir" ]; then
+                if [[ "$src" == *.tar.gz ]]; then
+                    wget -q "$src" -O /tmp/$app.tar.gz
+                    mkdir -p "$dir"
+                    tar -xzf /tmp/$app.tar.gz -C "$dir" --strip-components=1 || true
+                    rm -f /tmp/$app.tar.gz
+                else
+                    git clone "$src" "$dir"
+                fi
             fi
             
             # Post clone fixes
             if [ "$app" == "dvwa" ]; then
-                if [ -f "DVWA/config/config.inc.php.dist" ]; then
-                    cp DVWA/config/config.inc.php.dist DVWA/config/config.inc.php
+                if [ -f "$dir/config/config.inc.php.dist" ]; then
+                    cp "$dir/config/config.inc.php.dist" "$dir/config/config.inc.php"
                 fi
             fi
             
             if [ "$app" == "xvwa" ]; then
-                if [ -d "xvwa" ] && [ ! -L "xvwa/xvwa" ]; then
-                    ln -s . xvwa/xvwa
+                if [ -d "$dir" ] && [ ! -L "$dir/xvwa" ]; then
+                    ln -s . "$dir/xvwa"
+                fi
+            fi
+            
+            if [ "$app" == "phpmyadmin" ]; then
+                if [ -f "$dir/config.sample.inc.php" ]; then
+                    cp "$dir/config.sample.inc.php" "$dir/config.inc.php"
+                    sed -i "s/\$cfg\['blowfish_secret'\] = '';/\$cfg\['blowfish_secret'\] = 'OwaspLabToolkitRandomSecretString123!';/" "$dir/config.inc.php"
                 fi
             fi
         fi
@@ -265,20 +280,33 @@ _clone_apps() {
     
     local js_dir="${APP_DIR[juiceshop]}" 
     local wg_dir="${APP_DIR[webgoat]}"
+    local adminer_dir="${APP_DIR[adminer]}"
     
-    mkdir -p "$js_dir" "$wg_dir"
+    mkdir -p "$js_dir" "$wg_dir" "$adminer_dir"
     track_path "$js_dir"
     track_path "$wg_dir"
+    track_path "$adminer_dir"
+    
+    # Download Adminer (Stable version for installation)
+    if [ ! -f "$adminer_dir/index.php" ]; then
+        wget -q "https://www.adminer.org/latest-mysql-en.php" -O "$adminer_dir/index.php"
+    fi
     
     cd "$js_dir"
     if [ ! -f "package.json" ]; then
-        wget -qO- "${APP_URL[juiceshop]}" | tar -xz --strip-components=1 || true
+        wget -q "${APP_URL[juiceshop]}" -O /tmp/juiceshop.tgz
+        tar -xzf /tmp/juiceshop.tgz --strip-components=1 || true
+        rm -f /tmp/juiceshop.tgz
     fi
     
     cd "$wg_dir"
-    if [ ! -f "webgoat.jar" ]; then wget -qO webgoat.jar "${APP_URL[webgoat]}" || true; fi
-    if [ ! -f "webwolf.jar" ]; then wget -qO webwolf.jar "${APP_URL[webwolf]}" || true; fi
-    if [ ! -d "WebGoat-Source" ]; then git clone --branch v8.2.2 https://github.com/WebGoat/WebGoat.git WebGoat-Source || true; fi
+    if [ ! -f "webgoat.jar" ]; then
+        wget -q "${APP_URL[webgoat]}" -O webgoat.jar
+        wget -q "${APP_URL[webwolf]}" -O webwolf.jar
+    fi
+    if [ ! -d "WebGoat-Source" ]; then
+        git clone --branch v8.2.2 https://github.com/WebGoat/WebGoat.git WebGoat-Source || true
+    fi
     
     chown -R www-data:www-data "$HACK_DIR" 2>/dev/null || chown -R apache:apache "$HACK_DIR" 2>/dev/null || true
     chmod -R 755 "$HACK_DIR" || true
@@ -344,15 +372,20 @@ _run "Setting up Hosts & Wildcard SSL" "_setup_networking"
 _create_vhosts() {
     a2enmod rewrite proxy proxy_http || true
     a2dismod ssl || true
-    sed -i 's/.*Listen 443/#Listen 443/g; s/.*Listen 80.*/Listen 127.0.0.1:8081/g' /etc/apache2/ports.conf || true
+    
+    # Overwrite ports.conf entirely to prevent port 80 overlap
+    cat <<-EOF > /etc/apache2/ports.conf
+Listen 127.0.0.1:8081
+EOF
     
     for app in "${APPS_LIST[@]}"; do
         local engine="${APP_ENGINE[$app]}" 
         local doc_root="${APP_DOCROOT[$app]}"
+        local port="${APP_PORT[$app]}"
         
         if [ "$engine" == "apache" ]; then
             cat <<-EOF > "/etc/apache2/sites-available/${app}.conf"
-<VirtualHost 127.0.0.1:8081>
+<VirtualHost 127.0.0.1:$port>
     ServerName ${app}.${DOMAIN}
     DocumentRoot "/var/www/hack/$doc_root"
     <Directory "/var/www/hack/$doc_root">
@@ -388,8 +421,69 @@ server {
 }
 EOF
     done
+
+    # Create Main Dashboard Virtual Host
+    cat <<-EOF > "/etc/nginx/conf.d/main.conf"
+server {
+    listen 80;
+    server_name ${DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl default_server;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/owasp-lab/ssl/owasp.crt;
+    ssl_certificate_key /etc/owasp-lab/ssl/owasp.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+    cat <<-EOF > "/etc/apache2/sites-available/000-default.conf"
+<VirtualHost 127.0.0.1:8081>
+    ServerName ${DOMAIN}
+    DocumentRoot /var/www/html
+    <Directory "/var/www/html">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+EOF
+    a2ensite 000-default.conf || true
 }
 _run "Creating Apache & Nginx Virtual Hosts" "_create_vhosts"
+
+_create_dashboard() {
+    local DASH_DIR="/var/www/html"
+    mkdir -p "$DASH_DIR"
+    
+    # 1. Setup CLI Backend
+    local CLI_DIR="/usr/local/bin/owasp-lab"
+    mkdir -p "$CLI_DIR"
+    cp "${SCRIPT_DIR}/check-owasp-lab.sh" "$CLI_DIR/"
+    cp "${SCRIPT_DIR}/owasp-apps.conf" "$CLI_DIR/"
+    chmod +x "$CLI_DIR/check-owasp-lab.sh"
+    
+    # 2. Sudoers config for www-data & apache
+    echo "www-data ALL=(ALL) NOPASSWD: $CLI_DIR/check-owasp-lab.sh" > /etc/sudoers.d/owasp-web
+    echo "apache ALL=(ALL) NOPASSWD: $CLI_DIR/check-owasp-lab.sh" >> /etc/sudoers.d/owasp-web
+    chmod 440 /etc/sudoers.d/owasp-web
+    track_path "/etc/sudoers.d/owasp-web"
+    
+    # 3. Generate Dashboard Web Files (from owasp-apps.conf)
+    _generate_web_index "$DASH_DIR"
+    
+    chown -R www-data:www-data "$DASH_DIR" 2>/dev/null || chown -R apache:apache "$DASH_DIR" 2>/dev/null || true
+}
+_run "Generating Live Dashboard (Web-to-Bash Wrapper)" "_create_dashboard"
 
 # ------------------------------------------------------------------------------
 _hdr "SYSTEMD & DAEMONIZATION"
@@ -428,7 +522,7 @@ _create_services() {
     _create_svc "webgoat" "WebGoat" "simple" "/usr/bin/java -jar webgoat.jar --server.port=8080 --server.address=127.0.0.1" "" "" "root" "/opt/webgoat" ""
     _create_svc "webwolf" "WebWolf" "simple" "/usr/bin/java -jar webwolf.jar --server.port=9090 --server.address=127.0.0.1" "" "" "root" "/opt/webgoat" ""
     _create_svc "tomcat" "Apache Tomcat" "forking" "/opt/tomcat/bin/startup.sh" "/opt/tomcat/bin/shutdown.sh" "" "root" "/opt/tomcat" ""
-
+    
     systemctl daemon-reload
     local SERVICES_LIST=("apache2" "nginx" "mariadb" "juiceshop" "webgoat" "webwolf" "tomcat")
     
