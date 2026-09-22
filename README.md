@@ -86,7 +86,7 @@
 | [WebWolf](https://github.com/WebGoat/WebWolf) | Java 21 | `webwolf.owasp.hacking` |
 | [Apache Tomcat](https://tomcat.apache.org/) | Java 21 | `tomcat.owasp.hacking` |
 
-*(Note: `owasp.hacking` is the default. If you entered a custom domain like `lab.lokal`, your URLs will be `dvwa.lab.lokal`, `bwapp.lab.lokal`, etc.)*
+*(Note: `owasp.hacking` is the default. If you entered a custom domain like `lab.lokal`, your URLs will be `owasp.hacking mutillidae.owasp.hacking dvwa.owasp.hacking bwapp.owasp.hacking xvwa.owasp.hacking vwa.owasp.hacking adminer.owasp.hacking phpmyadmin.owasp.hacking juiceshop.owasp.hacking webgoat.owasp.hacking webwolf.owasp.hacking tomcat.owasp.hacking`)*
 
 ---
 
